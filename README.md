@@ -211,16 +211,20 @@ All via environment variables:
 
 ## Try It
 
-Public demo API (hosted): `http://YOUR_VM_IP`
+> 🧪 **Live Demo (experimental):** [https://bitnet.eastus.cloudapp.azure.com](https://bitnet.eastus.cloudapp.azure.com)
+>
+> Deployed for experimental purposes only — may be slow or taken down without notice. For production use, deploy your own instance.
 
 ```bash
+# Or use the API directly:
+
 # Get a JWT token
-curl -X POST http://YOUR_VM_IP/v1/auth/token \
+curl -X POST https://bitnet.eastus.cloudapp.azure.com/v1/auth/token \
   -H "Content-Type: application/json" \
-  -d '{"api_key": "DEMO_KEY"}'
+  -d '{"api_key": "sk-local-bitnet-key"}'
 
 # Chat
-curl -X POST http://YOUR_VM_IP/v1/chat/completions \
+curl -X POST https://bitnet.eastus.cloudapp.azure.com/v1/chat/completions \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"Hello!"}]}'
