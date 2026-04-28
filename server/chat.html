@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BitNet Chat</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root { --transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+
+  [data-theme="light"] {
+    --bg: #e8e8ed; --surface: #f0f0f3; --surface2: #e2e2e7;
+    --border: #cdcdd4; --border-hover: #b0b0b8;
+    --text: #1a1a1a; --text2: #4a4a55; --text3: #8a8a95;
+    --accent: #6c5ce7; --accent-hover: #5a4bd1; --accent-soft: rgba(108,92,231,0.08); --accent-glow: rgba(108,92,231,0.15);
+    --user-bg: linear-gradient(135deg, #d8d4f7, #e4e0ff); --bot-bg: #f5f5f8;
+    --input-bg: #f5f5f8; --shadow: rgba(0,0,0,0.06);
+    --code-bg: #eae8f5; --code-border: #d5d0ea;
+  }
+
+  [data-theme="dark"] {
+    --bg: #0d0d0d; --surface: #161616; --surface2: #1e1e1e;
+    --border: #2a2a2a; --border-hover: #3a3a3a;
+    --text: #ececec; --text2: #a0a0a0; --text3: #666;
+    --accent: #7c6fff; --accent-hover: #6b5ce7; --accent-soft: rgba(124,111,255,0.1); --accent-glow: rgba(124,111,255,0.2);
+    --user-bg: linear-gradient(135deg, #2a2650, #1e2040); --bot-bg: #1a1a1a;
+    --input-bg: #1a1a1a; --shadow: rgba(0,0,0,0.3);
+    --code-bg: #1a1a2e; --code-border: #2a2a3e;
+  }
+
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; transition: background var(--transition), color var(--transition); }
+
+  /* Header */
+  header { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--surface); transition: all var(--transition); }
+  .logo { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: opacity 0.2s; }
+  .logo:hover { opacity: 0.7; }
+  .logo span { background: linear-gradient(135deg, var(--accent), #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header-right { display: flex; gap: 8px; align-items: center; }
+  .header-link { color: var(--text2); font-size: 12px; text-decoration: none; padding: 5px 10px; border-radius: 6px; transition: all var(--transition); border: 1px solid transparent; }
+  .header-link:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  .api-badge { background: linear-gradient(135deg, var(--accent), #a78bfa); color: #fff; font-size: 11px; font-weight: 700; padding: 4px 12px; border-radius: 14px; text-decoration: none; transition: all var(--transition); letter-spacing: 0.3px; }
+  .api-badge:hover { opacity: 0.85; transform: translateY(-1px); }
+  .theme-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 14px; transition: all var(--transition); }
+  .theme-btn:hover { border-color: var(--accent); }
+  .new-chat-btn { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; padding: 4px 12px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all var(--transition); }
+  .new-chat-btn:hover { background: var(--accent); color: #fff; }
+  .api-key-input { background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 5px 10px; font-size: 12px; width: 160px; outline: none; transition: all var(--transition); }
+  .api-key-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+
+  /* Chat */
+  #chat { flex: 1; overflow-y: auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 20px; scroll-behavior: smooth; }
+  .msg { max-width: 740px; width: 100%; margin: 0 auto; display: flex; gap: 12px; animation: fadeSlide 0.4s var(--transition); }
+  .msg.user { flex-direction: row-reverse; }
+  @keyframes fadeSlide { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  .avatar { width: 30px; height: 30px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; transition: all var(--transition); }
+  .msg.user .avatar { background: linear-gradient(135deg, var(--accent), #a78bfa); color: #fff; }
+  .msg.bot .avatar { background: var(--surface2); border: 1px solid var(--border); }
+
+  .bubble { padding: 12px 16px; border-radius: 16px; font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; transition: all var(--transition); }
+  .msg.user .bubble { background: var(--user-bg); border-bottom-right-radius: 4px; }
+  .msg.bot .bubble { background: var(--bot-bg); border: 1px solid var(--border); border-bottom-left-radius: 4px; box-shadow: 0 1px 4px var(--shadow); }
+  .msg.bot .bubble p { margin-bottom: 8px; }
+  .msg.bot .bubble p:last-child { margin-bottom: 0; }
+  .msg.bot .bubble strong { color: var(--text); }
+  .msg.bot .bubble ul, .msg.bot .bubble ol { margin: 6px 0 6px 20px; }
+  .msg.bot .bubble li { margin-bottom: 4px; }
+  .msg.bot .bubble code { background: var(--code-bg); border: 1px solid var(--code-border); padding: 1px 6px; border-radius: 4px; font-size: 13px; font-family: 'SF Mono', Menlo, monospace; }
+  .msg.bot .bubble pre { background: var(--code-bg); border: 1px solid var(--code-border); padding: 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
+  .msg.bot .bubble pre code { background: none; border: none; padding: 0; }
+  .meta { font-size: 11px; color: var(--text3); margin-top: 6px; transition: color var(--transition); }
+
+  .typing .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin: 0 2px; animation: bounce 1.4s infinite; }
+  .typing .dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing .dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100% { transform: translateY(0); } 40% { transform: translateY(-8px); } }
+
+  /* Input */
+  #input-area { padding: 12px 16px 10px; border-top: 1px solid var(--border); background: var(--surface); transition: all var(--transition); }
+  #compose-row { display: flex; gap: 8px; max-width: 740px; margin: 0 auto 8px; align-items: center; }
+  #model-select { background: var(--input-bg); color: var(--text2); border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; font-size: 12px; outline: none; cursor: pointer; transition: all var(--transition); }
+  #model-select:focus { border-color: var(--accent); }
+  #input-wrap { max-width: 740px; margin: 0 auto; display: flex; gap: 8px; align-items: flex-end; }
+  #prompt { flex: 1; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; font-size: 14px; font-family: inherit; resize: none; outline: none; min-height: 44px; max-height: 200px; overflow-y: auto; transition: border-color var(--transition), box-shadow var(--transition); }
+  #prompt:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  #send { background: linear-gradient(135deg, var(--accent), #a78bfa); color: #fff; border: none; border-radius: 12px; padding: 0 20px; height: 44px; font-size: 14px; cursor: pointer; font-weight: 600; transition: all 0.2s; box-shadow: 0 2px 8px var(--shadow); flex-shrink: 0; }
+  #send:hover { transform: translateY(-1px); box-shadow: 0 4px 16px var(--accent-glow); }
+  #send:active { transform: translateY(0); }
+  #send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* Footer */
+  .footer-note { text-align: center; font-size: 11px; color: var(--text3); margin-top: 6px; max-width: 740px; margin-left: auto; margin-right: auto; transition: color var(--transition); }
+  .footer-note a { color: var(--text3); text-decoration: none; transition: color var(--transition); }
+  .footer-note a:hover { color: var(--accent); }
+
+  /* Welcome */
+  .welcome { text-align: center; color: var(--text2); margin: auto; padding: 40px 20px; }
+  .welcome-icon { font-size: 48px; margin-bottom: 16px; }
+  .welcome h2 { font-size: 24px; color: var(--text); margin-bottom: 6px; }
+  .welcome h2 span { background: linear-gradient(135deg, var(--accent), #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .welcome p { font-size: 14px; margin-bottom: 8px; }
+  .welcome .api-hint { font-size: 12px; color: var(--text3); margin-bottom: 20px; }
+  .welcome .api-hint a { color: var(--accent); text-decoration: none; }
+  .welcome .api-hint a:hover { text-decoration: underline; }
+  .welcome-hints { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; max-width: 600px; margin: 0 auto; }
+  .hint { background: var(--accent-soft); color: var(--accent); border: 1px solid transparent; padding: 6px 14px; border-radius: 20px; font-size: 12px; cursor: pointer; transition: all var(--transition); }
+  .hint:hover { border-color: var(--accent); background: var(--accent); color: #fff; transform: translateY(-1px); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo" onclick="newChat()" title="New Chat">⚡ <span>BitNet</span></div>
+  <div class="header-right">
+    <button class="new-chat-btn" onclick="newChat()">+ New Chat</button>
+    <a href="/v1/docs" class="api-badge">🔑 API & Tokens</a>
+    <button class="theme-btn" id="theme-toggle" title="Toggle theme" style="display:none">🌙</button>
+    <input type="password" class="api-key-input" id="api-key" placeholder="API Key" value="sk-local-bitnet-key">
+  </div>
+</header>
+
+<div id="chat">
+  <div class="welcome" id="welcome">
+    <div class="welcome-icon">⚡</div>
+    <h2><span>BitNet</span> Chat</h2>
+    <p>1-bit LLM running entirely on CPU — no GPU needed</p>
+    <p class="api-hint">Need API access? <a href="/v1/docs">Get your token →</a> · OpenAI SDK compatible</p>
+    <div class="welcome-hints">
+      <div class="hint" onclick="fillPrompt('Tell me a mass joke about programming')">😂 Programming joke</div>
+      <div class="hint" onclick="fillPrompt('Explain blockchain to a 5 year old')">🧒 ELI5 blockchain</div>
+      <div class="hint" onclick="fillPrompt('Write a Python script that generates a random password with uppercase, lowercase, numbers, and symbols')">💻 Password generator</div>
+      <div class="hint" onclick="fillPrompt('I have these ingredients: chicken, garlic, lemon, rice, spinach. Give me a quick dinner recipe.')">🍳 Recipe from ingredients</div>
+      <div class="hint" onclick="fillPrompt('Compare pros and cons of React vs Vue.js in a table format')">⚖️ React vs Vue</div>
+      <div class="hint" onclick="fillPrompt('Write a professional email to a client apologizing for a delayed project delivery and proposing a new timeline')">📧 Write apology email</div>
+      <div class="hint" onclick="fillPrompt('Translate to French, Spanish, and German: The future of AI is running locally on your device')">🌍 Translate to 3 languages</div>
+      <div class="hint" onclick="fillPrompt('Extract all entities as JSON: Tim Cook announced Apple will invest $10B in a new chip factory in Austin, Texas by March 2026')">🏷️ Extract entities → JSON</div>
+      <div class="hint" onclick="fillPrompt('Extract all people, companies, dates, locations, and monetary amounts from this email as JSON:\n\nHi David,\n\nFollowing our call with Sarah Chen from Microsoft on Tuesday, I wanted to confirm that the $2.5M partnership deal is moving forward. The legal team at Goldman Sachs reviewed the contract and flagged two issues. We need to schedule a meeting with Dr. James Miller in the London office before December 15th. Also, the Tokyo branch confirmed that Yamamoto-san will fly to New York on January 8th for the signing ceremony at our headquarters on 5th Avenue. Budget approval from CFO Rachel Kim is expected by Friday.\n\nBest,\nAlex Thompson\nVP of Strategic Partnerships, Acme Corp')">📨 Extract entities from email</div>
+      <div class="hint" onclick="fillPrompt('Classify each as positive/negative/neutral:\n1. This product changed my life!\n2. Worst customer service ever\n3. The package arrived on time\n4. I want a refund immediately')">📊 Batch sentiment analysis</div>
+      <div class="hint" onclick="fillPrompt('Solve step by step: A shirt costs $80 and is 25% off. You also have a $10 coupon. What do you pay?')">🧮 Solve math step by step</div>
+      <div class="hint" onclick="fillPrompt('Find the bug and fix it:\ndef fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)\n\nprint(fibonacci(50))  # This hangs forever')">🐛 Debug slow code</div>
+      <div class="hint" onclick="fillPrompt('Write a haiku about artificial intelligence')">🎨 AI haiku</div>
+      <div class="hint" onclick="fillPrompt('Summarize this email and list action items:\nHi team, Q3 launch moved from Sep 15 to Oct 1 due to regulatory delays. Marketing must update all materials by Sep 20. Budget increased 15% for compliance. Design team needs to finalize the new landing page by Sep 25. Please confirm availability for the all-hands on Sep 18.')">📋 Summarize email + actions</div>
+      <div class="hint" onclick="fillPrompt('You are a Linux terminal. I will type commands and you reply with what the terminal would show. First command: ls -la /home/user/')">🖥️ Simulate Linux terminal</div>
+      <div class="hint" onclick="fillPrompt('Create a SQL query to find the top 5 customers who spent the most in the last 30 days, including their name, email, and total amount')">🗄️ Write SQL query</div>
+      <div class="hint" onclick="fillPrompt('Roast my startup idea: An app that uses AI to tell you which houseplant is judging you the most')">🔥 Roast my startup idea</div>
+      <div class="hint" onclick="fillPrompt('Convert these messy meeting notes into a clean summary with action items and owners:\n\nok so john said the api is broken again, maria thinks its the auth module, we need to fix by friday. also the new dashboard design from tom looks good but needs mobile responsive. budget for Q4 is approved 50k. sarah will handle hiring 2 new devs, post on linkedin by wednesday. oh and the client demo is moved to next thursday 2pm, everyone needs to prep their sections. mike is out sick so alex covers his tasks this week.')">📝 Clean up meeting notes</div>
+      <div class="hint" onclick="fillPrompt('I have this customer support ticket. Draft a professional response:\n\nFrom: angry_customer@email.com\nSubject: TERRIBLE EXPERIENCE - ORDER #4521\n\nI ordered a laptop 2 weeks ago and it arrived with a cracked screen. I called support 3 times and each time I was put on hold for 30+ minutes. Nobody has helped me. I want a full refund AND compensation for wasting my time. If this isnt resolved by tomorrow I am posting this everywhere on social media. This is the worst customer service I have ever experienced.')">💬 Draft support response</div>
+      <div class="hint" onclick="fillPrompt('Analyze this product review and extract: sentiment (positive/negative/mixed), key complaints, key praises, suggested improvements, and overall rating (1-5):\n\nI have been using this project management tool for 6 months now. The UI is beautiful and intuitive, onboarding was smooth. Love the Kanban boards and the calendar integration with Google Calendar works flawlessly. However, the mobile app is painfully slow and crashes at least once a day. The reporting feature is basic compared to competitors like Asana. Customer support is responsive but often gives generic answers. Pricing is fair for small teams but gets expensive quickly when you scale beyond 20 users. Would recommend for small teams but not enterprise.')">⭐ Analyze product review</div>
+      <div class="hint" onclick="fillPrompt('Convert this job description into a structured JSON with fields: title, company, location, type (remote/onsite/hybrid), experience_years, salary_range, required_skills[], nice_to_have[], responsibilities[], benefits[]:\n\nWe are looking for a Senior Full Stack Developer to join our team at TechFlow in San Francisco (hybrid - 3 days onsite). 5+ years experience required. Salary range $150k-$200k. Must know React, Node.js, PostgreSQL, and AWS. Nice to have: GraphQL, Docker, Kubernetes. You will build and maintain our SaaS platform, mentor junior devs, participate in architecture decisions, and conduct code reviews. We offer health insurance, 401k matching, unlimited PTO, and $5k annual learning budget.')">📄 Parse job description → JSON</div>
+      <div class="hint" onclick="fillPrompt('Proofread and improve this LinkedIn post. Fix grammar, make it more engaging, add relevant emojis, and suggest 5 hashtags:\n\nJust launched my first side project. its a movie recommendation engine that suggests films based on your mood and watch history. built it using python and collaborative filtering. the cool part is it works completely offline without needing any api calls. tested with 1000 users and got 85% satisfaction rate. thinking of adding a book recommendation feature next. let me know if anyone wants to try it out')">✏️ Improve LinkedIn post</div>
+    </div>
+  </div>
+</div>
+
+<div id="input-area">
+  <div id="compose-row">
+    <select id="model-select"><option>Loading...</option></select>
+  </div>
+  <div id="input-wrap">
+    <textarea id="prompt" rows="1" placeholder="Type a message..." autofocus></textarea></textarea>
+    <button id="send">Send</button>
+  </div>
+  <div class="footer-note">
+    Powered by BitNet 1.58-bit · CPU inference · OpenAI compatible · Built by <a href="https://github.com/roshangrewal" target="_blank">@roshangrewal</a>
+  </div>
+</div>
+
+<script>
+const chat = document.getElementById('chat');
+const prompt = document.getElementById('prompt');
+const sendBtn = document.getElementById('send');
+const modelSelect = document.getElementById('model-select');
+const apiKeyInput = document.getElementById('api-key');
+const themeToggle = document.getElementById('theme-toggle');
+let messages = [];
+let jwtToken = null;
+let jwtExpiry = 0;
+
+// Theme — default light
+const savedTheme = localStorage.getItem('theme') || 'light';
+document.documentElement.setAttribute('data-theme', savedTheme);
+themeToggle.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+themeToggle.addEventListener('click', () => {
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  themeToggle.textContent = next === 'dark' ? '☀️' : '🌙';
+});
+
+prompt.addEventListener('input', resizePrompt);
+function resizePrompt() { prompt.style.height = 'auto'; prompt.style.height = Math.min(prompt.scrollHeight, 200) + 'px'; }
+apiKeyInput.addEventListener('change', () => { jwtToken = null; jwtExpiry = 0; });
+
+fetch('/v1/models').then(r => r.json()).then(data => {
+  const sorted = data.data.sort((a, b) => {
+    const sizeA = parseInt(a.id.match(/(\d+)B/)?.[1] || '0');
+    const sizeB = parseInt(b.id.match(/(\d+)B/)?.[1] || '0');
+    return sizeB - sizeA;
+  });
+  modelSelect.innerHTML = sorted.map(m => `<option value="${m.id}">${m.id}</option>`).join('');
+}).catch(() => { modelSelect.innerHTML = '<option>No models found</option>'; });
+
+async function getToken() {
+  const now = Date.now() / 1000;
+  if (jwtToken && jwtExpiry > now + 60) return jwtToken;
+  const apiKey = apiKeyInput.value.trim();
+  if (!apiKey) throw new Error('Enter an API key');
+  const res = await fetch('/v1/auth/token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ api_key: apiKey }) });
+  if (!res.ok) throw new Error('Invalid API key');
+  const data = await res.json();
+  jwtToken = data.token; jwtExpiry = now + data.expires_in_seconds;
+  return jwtToken;
+}
+
+function fillPrompt(text) { prompt.value = text; resizePrompt(); prompt.focus(); }
+
+const WELCOME_HTML = document.getElementById('welcome').outerHTML;
+function newChat() {
+  messages = [];
+  chat.innerHTML = WELCOME_HTML;
+  prompt.value = ''; prompt.focus();
+}
+
+function renderContent(text) {
+  // Basic markdown-like rendering
+  let html = text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^\s*[-•]\s+(.+)/gm, '<li>$1</li>')
+    .replace(/^\s*(\d+)\.\s+(.+)/gm, '<li>$2</li>')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+  // Wrap consecutive <li> in <ul>
+  html = html.replace(/((?:<li>.*?<\/li>\s*)+)/g, '<ul>$1</ul>');
+  return `<p>${html}</p>`.replace('<p></p>', '');
+}
+
+function addMessage(role, content, meta) {
+  const w = chat.querySelector('.welcome'); if (w) w.remove();
+  const div = document.createElement('div');
+  div.className = `msg ${role === 'user' ? 'user' : 'bot'}`;
+  const icon = role === 'user' ? '👤' : '⚡';
+  const rendered = role === 'user' ? content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : renderContent(content);
+  div.innerHTML = `<div class="avatar">${icon}</div><div style="min-width:0;flex:1"><div class="bubble">${rendered}</div>${meta ? `<div class="meta">${meta}</div>` : ''}</div>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function addTyping() {
+  const div = document.createElement('div'); div.className = 'msg bot'; div.id = 'typing';
+  div.innerHTML = `<div class="avatar">⚡</div><div><div class="bubble typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div></div>`;
+  chat.appendChild(div); chat.scrollTop = chat.scrollHeight;
+}
+function removeTyping() { const el = document.getElementById('typing'); if (el) el.remove(); }
+
+async function send() {
+  const text = prompt.value.trim(); if (!text) return;
+  prompt.value = ''; prompt.style.height = '44px'; sendBtn.disabled = true;
+  messages.push({ role: 'user', content: text });
+  addMessage('user', text); addTyping();
+  try {
+    const token = await getToken();
+    const res = await fetch('/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ model: modelSelect.value, messages: messages.slice(-10), max_tokens: 512, temperature: 0.7, repeat_penalty: 1.1 }),
+    });
+    removeTyping();
+    if (!res.ok) { const err = await res.json(); addMessage('bot', `Error: ${err.detail || res.statusText}`); return; }
+    const data = await res.json();
+    const reply = data.choices[0].message.content;
+    const elapsed = data.usage?.elapsed_ms;
+    messages.push({ role: 'assistant', content: reply });
+    addMessage('bot', reply, `${modelSelect.value} · ${elapsed ? (elapsed/1000).toFixed(1) + 's' : ''}`);
+  } catch (e) { removeTyping(); addMessage('bot', `Error: ${e.message}`); }
+  finally { sendBtn.disabled = false; prompt.focus(); }
+}
+
+sendBtn.addEventListener('click', send);
+prompt.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+</script>
+</body>
+</html>

@@ -1,339 +1,360 @@
-# bitnet.cpp
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-![version](https://img.shields.io/badge/version-1.0-blue)
+# ⚡ BitNet API
 
-[<img src="./assets/header_model_release.png" alt="BitNet Model on Hugging Face" width="800"/>](https://huggingface.co/microsoft/BitNet-b1.58-2B-4T)
+Run 1-bit LLMs on CPU with an OpenAI-compatible API. No GPU required.
 
-Try it out via this [demo](https://demo-bitnet-h0h8hcfqeqhrf5gf.canadacentral-01.azurewebsites.net/), or build and run it on your own [CPU](https://github.com/microsoft/BitNet?tab=readme-ov-file#build-from-source) or [GPU](https://github.com/microsoft/BitNet/blob/main/gpu/README.md).
+Built on [Microsoft BitNet](https://github.com/microsoft/BitNet) — the official inference framework for 1.58-bit ternary LLMs.
 
-bitnet.cpp is the official inference framework for 1-bit LLMs (e.g., BitNet b1.58). It offers a suite of optimized kernels, that support **fast** and **lossless** inference of 1.58-bit models on CPU and GPU (NPU support will coming next).
+## Features
 
-The first release of bitnet.cpp is to support inference on CPUs. bitnet.cpp achieves speedups of **1.37x** to **5.07x** on ARM CPUs, with larger models experiencing greater performance gains. Additionally, it reduces energy consumption by **55.4%** to **70.0%**, further boosting overall efficiency. On x86 CPUs, speedups range from **2.37x** to **6.17x** with energy reductions between **71.9%** to **82.2%**. Furthermore, bitnet.cpp can run a 100B BitNet b1.58 model on a single CPU, achieving speeds comparable to human reading (5-7 tokens per second), significantly enhancing the potential for running LLMs on local devices. Please refer to the [technical report](https://arxiv.org/abs/2410.16144) for more details.
+- **CPU-only inference** — runs on any machine, no GPU needed
+- **OpenAI SDK compatible** — drop-in replacement, works with Python/JS SDKs
+- **Multiple models** — switch between 3B, 7B, 10B models on the fly
+- **JWT authentication** — secure token-based auth with 1-hour expiry
+- **Rate limiting** — per-key request throttling (30 req/min)
+- **Sampling controls** — temperature, top_p, top_k, min_p, repeat/presence/frequency penalties
+- **Web chat UI** — dark/light theme, model selection, prompt suggestions
+- **API docs page** — interactive token generator, copy-to-clipboard, code examples
+- **One-command setup** — single script checks prerequisites, downloads, builds, and runs
 
-**Latest optimization** introduces parallel kernel implementations with configurable tiling and embedding quantization support, achieving **1.15x to 2.1x** additional speedup over the original implementation across different hardware platforms and workloads. For detailed technical information, see the [optimization guide](src/README.md).
+## Prerequisites
 
-<img src="./assets/performance.png" alt="performance_comparison" width="800"/>
+| Requirement | Why | Install |
+|---|---|---|
+| **conda** | Python environment manager | [miniconda](https://docs.conda.io/en/latest/miniconda.html) |
+| **git** | Clone repo + submodules | `brew install git` / `apt install git` |
+| **clang** | Compile the C++ inference engine | macOS: `xcode-select --install` · Linux: `apt install clang` |
 
+### Per-Model Requirements
 
-## Demo
+| Model | Disk (setup) | Disk (final) | RAM | CPU |
+|---|---|---|---|---|
+| Falcon3-3B | ~15GB temp | 2.1GB | 4GB+ | Any (2+ cores) |
+| Falcon3-7B | ~35GB temp | 3.1GB | 8GB+ | Any (4+ cores) |
+| Falcon3-10B | ~60GB temp | 4.5GB | 12GB+ | Any (4+ cores) |
 
-A demo of bitnet.cpp running a BitNet b1.58 3B model on Apple M2:
+> **Disk (setup)** is temporary — the large intermediate file is auto-deleted after conversion. Only **Disk (final)** stays on your machine.
 
-https://github.com/user-attachments/assets/7f46b736-edec-4828-b809-4be780a3e5b1
+## Quick Start
 
-## What's New:
-- 01/15/2026 [BitNet CPU Inference Optimization](https://github.com/microsoft/BitNet/blob/main/src/README.md) ![NEW](https://img.shields.io/badge/NEW-red)
-- 05/20/2025 [BitNet Official GPU inference kernel](https://github.com/microsoft/BitNet/blob/main/gpu/README.md)
-- 04/14/2025 [BitNet Official 2B Parameter Model on Hugging Face](https://huggingface.co/microsoft/BitNet-b1.58-2B-4T)
-- 02/18/2025 [Bitnet.cpp: Efficient Edge Inference for Ternary LLMs](https://arxiv.org/abs/2502.11880)
-- 11/08/2024 [BitNet a4.8: 4-bit Activations for 1-bit LLMs](https://arxiv.org/abs/2411.04965)
-- 10/21/2024 [1-bit AI Infra: Part 1.1, Fast and Lossless BitNet b1.58 Inference on CPUs](https://arxiv.org/abs/2410.16144)
-- 10/17/2024 bitnet.cpp 1.0 released.
-- 03/21/2024 [The-Era-of-1-bit-LLMs__Training_Tips_Code_FAQ](https://github.com/microsoft/unilm/blob/master/bitnet/The-Era-of-1-bit-LLMs__Training_Tips_Code_FAQ.pdf)
-- 02/27/2024 [The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits](https://arxiv.org/abs/2402.17764)
-- 10/17/2023 [BitNet: Scaling 1-bit Transformers for Large Language Models](https://arxiv.org/abs/2310.11453)
+> **Prerequisites:** [conda](https://docs.conda.io/en/latest/miniconda.html) and git
 
-## Acknowledgements
-
-This project is based on the [llama.cpp](https://github.com/ggerganov/llama.cpp) framework. We would like to thank all the authors for their contributions to the open-source community. Also, bitnet.cpp's kernels are built on top of the Lookup Table methodologies pioneered in [T-MAC](https://github.com/microsoft/T-MAC/). For inference of general low-bit LLMs beyond ternary models, we recommend using T-MAC.
-## Official Models
-<table>
-    </tr>
-    <tr>
-        <th rowspan="2">Model</th>
-        <th rowspan="2">Parameters</th>
-        <th rowspan="2">CPU</th>
-        <th colspan="3">Kernel</th>
-    </tr>
-    <tr>
-        <th>I2_S</th>
-        <th>TL1</th>
-        <th>TL2</th>
-    </tr>
-    <tr>
-        <td rowspan="2"><a href="https://huggingface.co/microsoft/BitNet-b1.58-2B-4T">BitNet-b1.58-2B-4T</a></td>
-        <td rowspan="2">2.4B</td>
-        <td>x86</td>
-        <td>&#9989;</td>
-        <td>&#10060;</td>
-        <td>&#9989;</td>
-    </tr>
-    <tr>
-        <td>ARM</td>
-        <td>&#9989;</td>
-        <td>&#9989;</td>
-        <td>&#10060;</td>
-    </tr>
-</table>
-
-## Supported Models
-❗️**We use existing 1-bit LLMs available on [Hugging Face](https://huggingface.co/) to demonstrate the inference capabilities of bitnet.cpp. We hope the release of bitnet.cpp will inspire the development of 1-bit LLMs in large-scale settings in terms of model size and training tokens.**
-
-<table>
-    </tr>
-    <tr>
-        <th rowspan="2">Model</th>
-        <th rowspan="2">Parameters</th>
-        <th rowspan="2">CPU</th>
-        <th colspan="3">Kernel</th>
-    </tr>
-    <tr>
-        <th>I2_S</th>
-        <th>TL1</th>
-        <th>TL2</th>
-    </tr>
-    <tr>
-        <td rowspan="2"><a href="https://huggingface.co/1bitLLM/bitnet_b1_58-large">bitnet_b1_58-large</a></td>
-        <td rowspan="2">0.7B</td>
-        <td>x86</td>
-        <td>&#9989;</td>
-        <td>&#10060;</td>
-        <td>&#9989;</td>
-    </tr>
-    <tr>
-        <td>ARM</td>
-        <td>&#9989;</td>
-        <td>&#9989;</td>
-        <td>&#10060;</td>
-    </tr>
-    <tr>
-        <td rowspan="2"><a href="https://huggingface.co/1bitLLM/bitnet_b1_58-3B">bitnet_b1_58-3B</a></td>
-        <td rowspan="2">3.3B</td>
-        <td>x86</td>
-        <td>&#10060;</td>
-        <td>&#10060;</td>
-        <td>&#9989;</td>
-    </tr>
-    <tr>
-        <td>ARM</td>
-        <td>&#10060;</td>
-        <td>&#9989;</td>
-        <td>&#10060;</td>
-    </tr>
-    <tr>
-        <td rowspan="2"><a href="https://huggingface.co/HF1BitLLM/Llama3-8B-1.58-100B-tokens">Llama3-8B-1.58-100B-tokens</a></td>
-        <td rowspan="2">8.0B</td>
-        <td>x86</td>
-        <td>&#9989;</td>
-        <td>&#10060;</td>
-        <td>&#9989;</td>
-    </tr>
-    <tr>
-        <td>ARM</td>
-        <td>&#9989;</td>
-        <td>&#9989;</td>
-        <td>&#10060;</td>
-    </tr>
-    <tr>
-        <td rowspan="2"><a href="https://huggingface.co/collections/tiiuae/falcon3-67605ae03578be86e4e87026">Falcon3 Family</a></td>
-        <td rowspan="2">1B-10B</td>
-        <td>x86</td>
-        <td>&#9989;</td>
-        <td>&#10060;</td>
-        <td>&#9989;</td>
-    </tr>
-    <tr>
-        <td>ARM</td>
-        <td>&#9989;</td>
-        <td>&#9989;</td>
-        <td>&#10060;</td>
-    </tr>
-    <tr>
-        <td rowspan="2"><a href="https://huggingface.co/collections/tiiuae/falcon-edge-series-6804fd13344d6d8a8fa71130">Falcon-E Family</a></td>
-        <td rowspan="2">1B-3B</td>
-        <td>x86</td>
-        <td>&#9989;</td>
-        <td>&#10060;</td>
-        <td>&#9989;</td>
-    </tr>
-    <tr>
-        <td>ARM</td>
-        <td>&#9989;</td>
-        <td>&#9989;</td>
-        <td>&#10060;</td>
-    </tr>
-</table>
-
-
-
-## Installation
-
-### Requirements
-- python>=3.9
-- cmake>=3.22
-- clang>=18
-    - For Windows users, install [Visual Studio 2022](https://visualstudio.microsoft.com/downloads/). In the installer, toggle on at least the following options(this also automatically installs the required additional tools like CMake):
-        -  Desktop-development with C++
-        -  C++-CMake Tools for Windows
-        -  Git for Windows
-        -  C++-Clang Compiler for Windows
-        -  MS-Build Support for LLVM-Toolset (clang)
-    - For Debian/Ubuntu users, you can download with [Automatic installation script](https://apt.llvm.org/)
-
-        `bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"`
-- conda (highly recommend)
-
-### Build from source
-
-> [!IMPORTANT]
-> If you are using Windows, please remember to always use a Developer Command Prompt / PowerShell for VS2022 for the following commands. Please refer to the FAQs below if you see any issues.
-
-1. Clone the repo
 ```bash
-git clone --recursive https://github.com/microsoft/BitNet.git
-cd BitNet
-```
-2. Install the dependencies
-```bash
-# (Recommended) Create a new conda environment
-conda create -n bitnet-cpp python=3.9
+# Clone
+git clone https://github.com/AiCodingBattle/bitnet-api.git
+cd bitnet-api
+
+# Setup (downloads model, builds everything — takes ~10 min)
+bash setup.sh        # Falcon3-7B (recommended)
+bash setup.sh 3b     # Falcon3-3B (faster, less disk)
+
+# Run
 conda activate bitnet-cpp
-
-pip install -r requirements.txt
+./server/start.sh
 ```
-3. Build the project
-```bash
-# Manually download the model and run with local path
-huggingface-cli download microsoft/BitNet-b1.58-2B-4T-gguf --local-dir models/BitNet-b1.58-2B-4T
-python setup_env.py -md models/BitNet-b1.58-2B-4T -q i2_s
 
+Open **http://localhost:8000** for the chat UI.
+
+## Use with OpenAI SDK
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8000/v1",
+    api_key="sk-local-bitnet-key",  # default local key
+)
+
+response = client.chat.completions.create(
+    model="Falcon3-7B-Instruct-1.58bit",
+    messages=[{"role": "user", "content": "What is Bitcoin?"}],
+    temperature=0.7,
+    top_p=0.9,
+)
+print(response.choices[0].message.content)
 ```
-<pre>
-usage: setup_env.py [-h] [--hf-repo {1bitLLM/bitnet_b1_58-large,1bitLLM/bitnet_b1_58-3B,HF1BitLLM/Llama3-8B-1.58-100B-tokens,tiiuae/Falcon3-1B-Instruct-1.58bit,tiiuae/Falcon3-3B-Instruct-1.58bit,tiiuae/Falcon3-7B-Instruct-1.58bit,tiiuae/Falcon3-10B-Instruct-1.58bit}] [--model-dir MODEL_DIR] [--log-dir LOG_DIR] [--quant-type {i2_s,tl1}] [--quant-embd]
-                    [--use-pretuned]
 
-Setup the environment for running inference
+Works with the JavaScript SDK too:
 
-optional arguments:
-  -h, --help            show this help message and exit
-  --hf-repo {1bitLLM/bitnet_b1_58-large,1bitLLM/bitnet_b1_58-3B,HF1BitLLM/Llama3-8B-1.58-100B-tokens,tiiuae/Falcon3-1B-Instruct-1.58bit,tiiuae/Falcon3-3B-Instruct-1.58bit,tiiuae/Falcon3-7B-Instruct-1.58bit,tiiuae/Falcon3-10B-Instruct-1.58bit}, -hr {1bitLLM/bitnet_b1_58-large,1bitLLM/bitnet_b1_58-3B,HF1BitLLM/Llama3-8B-1.58-100B-tokens,tiiuae/Falcon3-1B-Instruct-1.58bit,tiiuae/Falcon3-3B-Instruct-1.58bit,tiiuae/Falcon3-7B-Instruct-1.58bit,tiiuae/Falcon3-10B-Instruct-1.58bit}
-                        Model used for inference
-  --model-dir MODEL_DIR, -md MODEL_DIR
-                        Directory to save/load the model
-  --log-dir LOG_DIR, -ld LOG_DIR
-                        Directory to save the logging info
-  --quant-type {i2_s,tl1}, -q {i2_s,tl1}
-                        Quantization type
-  --quant-embd          Quantize the embeddings to f16
-  --use-pretuned, -p    Use the pretuned kernel parameters
-</pre>
-## Usage
-### Basic usage
-```bash
-# Run inference with the quantized model
-python run_inference.py -m models/BitNet-b1.58-2B-4T/ggml-model-i2_s.gguf -p "You are a helpful assistant" -cnv
+```javascript
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'http://localhost:8000/v1',
+  apiKey: 'sk-local-bitnet-key',
+});
+
+const resp = await client.chat.completions.create({
+  model: 'Falcon3-7B-Instruct-1.58bit',
+  messages: [{ role: 'user', content: 'What is Bitcoin?' }],
+});
+console.log(resp.choices[0].message.content);
 ```
-<pre>
-usage: run_inference.py [-h] [-m MODEL] [-n N_PREDICT] -p PROMPT [-t THREADS] [-c CTX_SIZE] [-temp TEMPERATURE] [-cnv]
 
-Run inference
+## Authentication
 
-optional arguments:
-  -h, --help            show this help message and exit
-  -m MODEL, --model MODEL
-                        Path to model file
-  -n N_PREDICT, --n-predict N_PREDICT
-                        Number of tokens to predict when generating text
-  -p PROMPT, --prompt PROMPT
-                        Prompt to generate text from
-  -t THREADS, --threads THREADS
-                        Number of threads to use
-  -c CTX_SIZE, --ctx-size CTX_SIZE
-                        Size of the prompt context
-  -temp TEMPERATURE, --temperature TEMPERATURE
-                        Temperature, a hyperparameter that controls the randomness of the generated text
-  -cnv, --conversation  Whether to enable chat mode or not (for instruct models.)
-                        (When this option is turned on, the prompt specified by -p will be used as the system prompt.)
-</pre>
+The API uses JWT tokens for authentication.
 
-### Benchmark
-We provide scripts to run the inference benchmark providing a model.
+**Local mode:** Default key `sk-local-bitnet-key` is pre-configured — just start and use.
 
-```  
-usage: e2e_benchmark.py -m MODEL [-n N_TOKEN] [-p N_PROMPT] [-t THREADS]  
-   
-Setup the environment for running the inference  
-   
-required arguments:  
-  -m MODEL, --model MODEL  
-                        Path to the model file. 
-   
-optional arguments:  
-  -h, --help  
-                        Show this help message and exit. 
-  -n N_TOKEN, --n-token N_TOKEN  
-                        Number of generated tokens. 
-  -p N_PROMPT, --n-prompt N_PROMPT  
-                        Prompt to generate text from. 
-  -t THREADS, --threads THREADS  
-                        Number of threads to use. 
-```  
-   
-Here's a brief explanation of each argument:  
-   
-- `-m`, `--model`: The path to the model file. This is a required argument that must be provided when running the script.  
-- `-n`, `--n-token`: The number of tokens to generate during the inference. It is an optional argument with a default value of 128.  
-- `-p`, `--n-prompt`: The number of prompt tokens to use for generating text. This is an optional argument with a default value of 512.  
-- `-t`, `--threads`: The number of threads to use for running the inference. It is an optional argument with a default value of 2.  
-- `-h`, `--help`: Show the help message and exit. Use this argument to display usage information.  
-   
-For example:  
-   
-```sh  
-python utils/e2e_benchmark.py -m /path/to/model -n 200 -p 256 -t 4  
-```  
-   
-This command would run the inference benchmark using the model located at `/path/to/model`, generating 200 tokens from a 256 token prompt, utilizing 4 threads.  
-
-For the model layout that do not supported by any public model, we provide scripts to generate a dummy model with the given model layout, and run the benchmark on your machine:
+**Production/Cloud:** Set your own keys via `API_KEYS` env var:
 
 ```bash
-python utils/generate-dummy-bitnet-model.py models/bitnet_b1_58-large --outfile models/dummy-bitnet-125m.tl1.gguf --outtype tl1 --model-size 125M
-
-# Run benchmark with the generated model, use -m to specify the model path, -p to specify the prompt processed, -n to specify the number of token to generate
-python utils/e2e_benchmark.py -m models/dummy-bitnet-125m.tl1.gguf -p 512 -n 128
+API_KEYS="sk-prod-key-1,sk-prod-key-2" ./server/start.sh
 ```
 
-### Convert from `.safetensors` Checkpoints
+### JWT Token Flow
 
-```sh
-# Prepare the .safetensors model file
-huggingface-cli download microsoft/bitnet-b1.58-2B-4T-bf16 --local-dir ./models/bitnet-b1.58-2B-4T-bf16
+```bash
+# 1. Exchange API key for a JWT token (valid 1 hour)
+curl -X POST http://localhost:8000/v1/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "sk-local-bitnet-key"}'
 
-# Convert to gguf model
-python ./utils/convert-helper-bitnet.py ./models/bitnet-b1.58-2B-4T-bf16
+# Returns: {"token": "eyJ...", "expires_in_seconds": 3600}
+
+# 2. Use the token for requests
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"Hello!"}]}'
 ```
 
-### FAQ (Frequently Asked Questions)📌 
+You can also pass the raw API key directly as a Bearer token (simpler for server-to-server).
 
-#### Q1: The build dies with errors building llama.cpp due to issues with std::chrono in log.cpp?
+## Sampling Parameters
 
-**A:**
-This is an issue introduced in recent version of llama.cpp. Please refer to this [commit](https://github.com/tinglou/llama.cpp/commit/4e3db1e3d78cc1bcd22bcb3af54bd2a4628dd323) in the [discussion](https://github.com/abetlen/llama-cpp-python/issues/1942) to fix this issue.
+All standard LLM sampling parameters are supported:
 
-#### Q2: How to build with clang in conda environment on windows?
+| Parameter | Default | Description |
+|---|---|---|
+| `temperature` | 0.7 | Randomness (0 = deterministic, 2 = max creative) |
+| `top_p` | 0.9 | Nucleus sampling threshold |
+| `top_k` | 40 | Top-k token filtering |
+| `min_p` | 0.1 | Minimum probability threshold |
+| `repeat_penalty` | 1.0 | Penalize repeated sequences |
+| `presence_penalty` | 0.0 | Encourage new topics |
+| `frequency_penalty` | 0.0 | Reduce repetition |
 
-**A:** 
-Before building the project, verify your clang installation and access to Visual Studio tools by running:
+### Recommended Presets
+
+| Use Case | temperature | top_p | top_k |
+|---|---|---|---|
+| Factual Q&A / Classification | 0.1 | 0.5 | 10 |
+| General chat | 0.7 | 0.9 | 40 |
+| Creative writing | 1.2 | 0.95 | 100 |
+| Code generation | 0.3 | 0.8 | 20 |
+
+## Available Models
+
+| Model | GGUF Size | Speed (M4) | Best For |
+|---|---|---|---|
+| `bash setup.sh 3b` — Falcon3-3B | 2.1GB | ~25 tok/s | Fast responses |
+| `bash setup.sh` — Falcon3-7B | 3.1GB | ~11 tok/s | **Best quality/speed balance** |
+| `bash setup.sh 10b` — Falcon3-10B | ~4.5GB | ~7 tok/s | Best quality (needs 60GB free disk for setup) |
+
+You can install multiple models and switch between them in the chat UI.
+
+## Web Interface
+
+### Chat UI — `http://localhost:8000`
+
+- Dark/light theme toggle (persists across sessions)
+- Model selector in compose bar
+- Clickable prompt suggestions
+- Response time and model name shown per message
+- JWT token auto-managed (fetched from API key, cached, auto-refreshes)
+
+### API Docs — `http://localhost:8000/v1/docs`
+
+- Interactive token generator with copy buttons
+- Ready-to-use BASE_URL and TOKEN values
+- Auto-generated curl command
+- Full parameter reference with recommended presets
+- Code examples: Python, JavaScript, cURL
+- Dark/light theme synced with chat UI
+
+## Cloud Deployment
+
+For hosting a public API:
+
+```bash
+scp server/cloud-setup.sh user@YOUR_VM_IP:~/
+ssh user@YOUR_VM_IP
+API_KEYS="sk-your-key" bash cloud-setup.sh
 ```
-clang -v
+
+Sets up systemd service + Nginx reverse proxy. Requires Ubuntu 22.04+, 8+ vCPU, 16GB+ RAM.
+
+## Configuration
+
+All via environment variables:
+
+| Variable | Default | Description |
+|---|---|---|
+| `API_KEYS` | `sk-local-bitnet-key` | Comma-separated API keys |
+| `JWT_SECRET` | auto-generated | Secret for signing JWT tokens |
+| `JWT_EXPIRY_HOURS` | `1` | Token validity period |
+| `MAX_CONCURRENT` | `2` | Max simultaneous requests |
+| `RATE_LIMIT_RPM` | `30` | Requests per minute per key |
+| `REQUEST_TIMEOUT` | `120` | Inference timeout (seconds) |
+| `THREADS` | `4` | CPU threads for inference |
+| `MODEL_PATH` | `models/Falcon3-7B-.../ggml-model-i2_s.gguf` | Default model path |
+
+## API Endpoints
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `/v1/auth/token` | No | Exchange API key for JWT token |
+| `POST` | `/v1/chat/completions` | Yes | Chat completion (OpenAI compatible) |
+| `GET` | `/v1/models` | No | List available models |
+| `GET` | `/health` | No | Server health and queue status |
+
+## Try It
+
+Public demo API (hosted): `http://YOUR_VM_IP`
+
+```bash
+# Get a JWT token
+curl -X POST http://YOUR_VM_IP/v1/auth/token \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "DEMO_KEY"}'
+
+# Chat
+curl -X POST http://YOUR_VM_IP/v1/chat/completions \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"Hello!"}]}'
 ```
 
-This command checks that you are using the correct version of clang and that the Visual Studio tools are available. If you see an error message such as:
+## Benchmarks
+
+Tested across 12 AI task categories on Azure Standard_D4as_v5 (4 vCPU, 16GB RAM, x86).
+
+### Speed
+
+| Model | Tokens/sec | Avg Response Time |
+|---|---|---|
+| Falcon3-3B-Instruct | ~23 tok/s | ~4-6s |
+| Falcon3-7B-Instruct | ~12 tok/s | ~8-12s |
+| Falcon3-10B-Instruct | ~10 tok/s | ~10-15s |
+
+### Quality Comparison
+
+| Task | 3B | 7B | 10B |
+|---|---|---|---|
+| **Small Talk** | ✅ Short but fine | ✅ Natural, polished | ✅ Natural, polished |
+| **Intent Classification** | ❌ Wrong ("greeting") | ✅ Correct ("request") | ⚠️ Close ("inquiry") |
+| **Sentiment Analysis** | ⚠️ "negative" (should be mixed) | ✅ **"mixed"** | ⚠️ "negative" |
+| **Topic Classification** | ✅ "technology" | ✅ "finance" | ✅ "finance" |
+| **Entity Extraction (NER)** | ⚠️ Partial, missing person | ⚠️ Missing person | ✅ **All entities correct** |
+| **Reading Comprehension** | ❌ Hallucinated price ($850) | ✅ **Complete + accurate** | ✅ **Complete + accurate** |
+| **Summarization** | ✅ Good, slight inaccuracy | ✅ Good | ⚠️ Factual error |
+| **Code Explanation** | ✅ Correct | ✅ Detailed + correct | ✅ Correct |
+| **Formal Rewriting** | ✅ Good | ✅ **Polished, professional** | ✅ Good |
+| **Bullet Point Extraction** | ⚠️ Verbose, added extra info | ✅ **Clean, all 4 points** | ✅ **Clean, all 4 points** |
+| **Math (25% of 200)** | ❌ Wrong (said 5) | ⚠️ Started but cut off | ⚠️ Started but cut off |
+| **Email Summary + Actions** | ✅ Listed actions | ✅ **Concise one-liner** | ✅ **Detailed with all items** |
+
+### Detailed Results
+
+#### Entity Extraction (NER)
+
 ```
-'clang' is not recognized as an internal or external command, operable program or batch file.
+Prompt: Extract entities as JSON: "Elon Musk announced on Jan 15 2025 that
+        Tesla will open a factory in Berlin with BMW."
+
+3B: {"name": "Tesla", "organization": ["company"], "location": ["Berlin"],
+     "date": ["15, 2025"]}
+    ⚠️ Missing person (Elon Musk), malformed date
+
+7B: {"location": "Berlin", "organization": "BMW", "date": "Jan 15, 2025"}
+    ⚠️ Missing person, missing Tesla
+
+10B: {"person": ["Elon Musk"], "organization": ["Tesla", "BMW"],
+      "location": ["Berlin"], "date": "Jan 15 2025"}
+     ✅ All entities correctly extracted
 ```
 
-It indicates that your command line window is not properly initialized for Visual Studio tools.
+#### Reading Comprehension
 
-• If you are using Command Prompt, run:
 ```
-"C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\Tools\VsDevCmd.bat" -startdir=none -arch=x64 -host_arch=x64
+Prompt: "Enterprise plan costs $99/month with unlimited storage, dedicated
+         account manager, and 99.9% SLA. What does it include and cost?"
+
+3B: "Enterprise plan costs 850 dollars a year..."
+    ❌ Hallucinated price
+
+7B: "Enterprise plan includes unlimited storage, a dedicated account manager,
+     and has a 99.9% SLA. The cost is $99 per month."
+    ✅ Complete and accurate
+
+10B: "The enterprise plan includes unlimited storage and a dedicated account
+      manager. It also has a high SLA of 99.9%. The monthly cost is $99."
+     ✅ Complete and accurate
 ```
 
-• If you are using Windows PowerShell, run the following commands:
+#### Formal Rewriting
+
 ```
-Import-Module "C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\Tools\Microsoft.VisualStudio.DevShell.dll" Enter-VsDevShell 3f0e31ad -SkipAutomaticLocation -DevCmdArguments "-arch=x64 -host_arch=x64"
+Prompt: Rewrite formally: "hey dude meeting pushed to next week cuz client
+        bailed lmk if that works"
+
+3B: "Subject: Meeting Adjusted for Client's Availability - Next Week
+     Dear [Client's Name],"
+    ✅ Good structure
+
+7B: "Good morning [Client's Name], I would like to inform you of an upcoming
+     engagement which has been rescheduled for the subsequent week. Kindly
+     advise on your availability."
+    ✅ Polished, natural tone
+
+10B: "Subject: Client Meeting Reschedule to Next Week
+      Dear [Client's Name],"
+     ✅ Professional
 ```
 
-These steps will initialize your environment and allow you to use the correct Visual Studio tools.
+#### Email Summary
+
+```
+Prompt: Summarize email and list action items: "Q3 launch moved from Sep 15
+        to Oct 1. Marketing update by Sep 20. Budget +15%. Design finalize
+        landing page by Sep 25."
+
+3B: "- Update marketing materials
+     - Ensure legal documentation finalized
+     - Adjust budget allocation"
+    ✅ Actions listed, added extra inference
+
+7B: "Q3 launch was delayed; marketing must update by Sept. 20, budget
+     increased 15%, and design must complete landing page by Sept. 25"
+    ✅ Concise one-sentence summary with all details
+
+10B: "The Q3 launch has been postponed due to regulatory delays. Marketing
+      must update materials by September 20, while the budget will be
+      increased by 15%. Design team needs to finalize landing page by Sep 25."
+     ✅ Most detailed and complete
+```
+
+### Verdict
+
+| Model | Best For | Weakness |
+|---|---|---|
+| **3B** | Fast responses, simple Q&A, topic classification | Hallucinations, weak on nuanced tasks |
+| **7B** | **Best all-rounder** — accurate comprehension, clean formatting, good classification | Slower than 3B |
+| **10B** | Entity extraction, detailed responses, complex tasks | Slowest, marginal gain over 7B on most tasks |
+
+**Recommendation:** Use **7B as default** for the best quality/speed balance. Use 3B when speed matters more than accuracy. Use 10B for tasks requiring precise entity extraction or detailed analysis.
+
+See [BENCHMARKS.md](BENCHMARKS.md) for full detailed results with actual model responses for every category.
+
+## Documentation
+
+See [DOCS.md](DOCS.md) for:
+- Detailed benchmark results (BitNet 2B vs Falcon3 3B vs 7B)
+- Full benchmark output with actual model responses
+- Cloud deployment guide with systemd + Nginx + HTTPS
+- Known issues and workarounds
+
+## License
+
+MIT — see [LICENSE](LICENSE).
