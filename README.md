@@ -4,6 +4,10 @@ Run 1-bit LLMs on CPU with an OpenAI-compatible API. No GPU required.
 
 Built on [Microsoft BitNet](https://github.com/microsoft/BitNet) — the official inference framework for 1.58-bit ternary LLMs.
 
+> 🧪 **Live Demo (experimental):** [https://bitnet.eastus.cloudapp.azure.com](https://bitnet.eastus.cloudapp.azure.com)
+>
+> Deployed for experimental purposes only — may be slow or taken down without notice. For production use, deploy your own instance.
+
 ## Features
 
 - **CPU-only inference** — runs on any machine, no GPU needed
@@ -208,27 +212,6 @@ All via environment variables:
 | `POST` | `/v1/chat/completions` | Yes | Chat completion (OpenAI compatible) |
 | `GET` | `/v1/models` | No | List available models |
 | `GET` | `/health` | No | Server health and queue status |
-
-## Try It
-
-> 🧪 **Live Demo (experimental):** [https://bitnet.eastus.cloudapp.azure.com](https://bitnet.eastus.cloudapp.azure.com)
->
-> Deployed for experimental purposes only — may be slow or taken down without notice. For production use, deploy your own instance.
-
-```bash
-# Or use the API directly:
-
-# Get a JWT token
-curl -X POST https://bitnet.eastus.cloudapp.azure.com/v1/auth/token \
-  -H "Content-Type: application/json" \
-  -d '{"api_key": "sk-local-bitnet-key"}'
-
-# Chat
-curl -X POST https://bitnet.eastus.cloudapp.azure.com/v1/chat/completions \
-  -H "Authorization: Bearer <token>" \
-  -H "Content-Type: application/json" \
-  -d '{"messages":[{"role":"user","content":"Hello!"}]}'
-```
 
 ## Benchmarks
 
