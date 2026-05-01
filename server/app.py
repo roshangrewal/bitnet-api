@@ -1,6 +1,6 @@
-"""BitNet Inference API Gateway with JWT auth and model selection."""
+"""BitNet Inference API Gateway with persistent model process."""
 
-import os, time, asyncio, glob, secrets
+import os, time, asyncio, glob, secrets, subprocess, threading, queue
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -50,7 +50,7 @@ app = FastAPI(title="BitNet Inference API", version="1.0.0", lifespan=lifespan)
 
 
 # ---------------------------------------------------------------------------
-# JWT helpers
+# JWT
 # ---------------------------------------------------------------------------
 def create_jwt(api_key: str) -> dict:
     now = datetime.now(timezone.utc)
@@ -63,20 +63,14 @@ def verify_token(creds: HTTPAuthorizationCredentials = Depends(security)) -> str
     if creds is None:
         raise HTTPException(status_code=401, detail="Missing Authorization header. Use: Bearer <jwt_token>")
     token = creds.credentials
-
-    # Accept raw API key (backward compat)
     if token in API_KEYS:
         return token
-
-    # Validate JWT
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired. Generate a new one via POST /v1/auth/token")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
-
-    # Rate limit by subject
     sub = payload.get("sub", "unknown")
     now = time.time()
     window = rate_limits.setdefault(sub, [])
@@ -111,7 +105,7 @@ class AuthRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Inference
+# Inference — per-request CLI (model loads each time but reliable)
 # ---------------------------------------------------------------------------
 async def run_inference(model_path: str, prompt: str, req: ChatRequest) -> str:
     cmd = [
@@ -164,7 +158,6 @@ async def list_models():
 
 @app.post("/v1/auth/token")
 async def generate_token(req: AuthRequest):
-    """Exchange an API key for a JWT token (valid for 1 hour)."""
     if req.api_key not in API_KEYS:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return create_jwt(req.api_key)
@@ -182,7 +175,6 @@ async def chat_completions(req: ChatRequest, caller: str = Depends(verify_token)
         raise HTTPException(status_code=500, detail="No models found")
 
     model_path = models.get(req.model, list(models.values())[-1])
-
     prompt = "".join(f"<|{m.role}|>\n{m.content}\n" for m in req.messages) + "<|assistant|>\n"
 
     if semaphore._value == 0:
