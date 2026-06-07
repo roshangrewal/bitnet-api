@@ -46,3 +46,4 @@ poetry.toml
 build/
 logs/DEPLOY.local
 VM-DEPLOY.md
+LINKEDIN-POSTS.local

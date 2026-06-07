@@ -1,6 +1,6 @@
 """BitNet Inference API Gateway with persistent model process."""
 
-import os, time, asyncio, glob, secrets, subprocess, threading, queue
+import os, time, asyncio, glob, secrets, subprocess, threading, queue, logging
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -10,6 +10,9 @@ from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger("bitnet")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s", datefmt="%H:%M:%S")
 
 # ---------------------------------------------------------------------------
 # Config
@@ -183,7 +186,11 @@ async def chat_completions(req: ChatRequest, caller: str = Depends(verify_token)
     async with semaphore:
         start = time.time()
         content = await run_inference(model_path, prompt, req)
+
+
         elapsed = time.time() - start
+        model_name = req.model or list(models.keys())[-1]
+        logger.info(f"model={model_name} tokens={req.max_tokens} time={elapsed:.1f}s")
 
     return JSONResponse(content={
         "id": f"chatcmpl-{int(time.time())}",
