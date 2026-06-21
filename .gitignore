@@ -44,5 +44,4 @@ __pycache__/
 poetry.toml
 
 build/
-logs/DEPLOY.local
-VM-DEPLOY.md
+
